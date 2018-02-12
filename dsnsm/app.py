@@ -10,7 +10,7 @@ def hello():
 
 if __name__ == '__main__':
     try:
-        port = os.environ['PORT']
+        port = int(os.environ['PORT'])
     except KeyError:
         port = 5000
 
