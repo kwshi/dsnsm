@@ -84,7 +84,7 @@ def submit(name):
 
     entry = data.write(name=name,
                        client_timestamp=form.get('time'),
-                       ip=flask.request.remote_addr,
+                       ip=flask.request.headers.get('X-Forwarded-For'),
                        message=form.get('message'),
                        method=flask.request.method)
 
