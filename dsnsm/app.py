@@ -29,7 +29,11 @@ class DataMan:
     def read_all(self):
         return self.collection.find({})
 
-    def write(self, client_timestamp, message, method):
+    def write(self,
+              client_timestamp,
+              ip,
+              message,
+              method):
         server_timestamp = time.time()
 
         entry = {
@@ -37,6 +41,7 @@ class DataMan:
             'server_timestamp': server_timestamp,
             'message': message,
             'method': method,
+            'ip': ip,
         }
 
         self.collection.insert_one(entry)
@@ -81,9 +86,10 @@ def submit_post(key):
     if key != config['dsnsm_key']:
         return 'API key mismatch'
 
-    entry = data.write(flask.request.form.get('time'),
-                       flask.request.form.get('message'),
-                       'post')
+    entry = data.write(client_timestamp=flask.request.form.get('time'),
+                       ip=flask.request.remote_addr,
+                       message=flask.request.form.get('message'),
+                       method='post')
 
     return pp.pformat(entry)
 
