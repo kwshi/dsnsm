@@ -1,5 +1,6 @@
-from flask import Flask
-app = Flask(__name__)
+import os
+import flask
+app = flask.Flask(__name__)
 
 
 @app.route("/")
@@ -8,4 +9,9 @@ def hello():
 
 
 if __name__ == '__main__':
-    app.run()
+    try:
+        port = os.environ['PORT']
+    except KeyError:
+        port = 5000
+
+    app.run(port=os.environ['PORT'])
