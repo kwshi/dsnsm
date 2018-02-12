@@ -73,14 +73,14 @@ def home():
 
 @app.route('/submit/<name>', methods=('GET', 'POST'))
 def submit(name):
-    if flask.request.args.get('key') != config['dsnsm_key']:
-        return 'API key mismatch'
-
     if flask.request.method == 'POST':
         form = flask.request.form
 
     elif flask.request.method == 'GET':
         form = flask.request.args
+
+    if form.get('key') != config['dsnsm_key']:
+        return 'API key mismatch'
 
     entry = data.write(name=name,
                        client_timestamp=form.get('time'),
