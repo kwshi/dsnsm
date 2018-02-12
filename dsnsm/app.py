@@ -14,4 +14,4 @@ if __name__ == '__main__':
     except KeyError:
         port = 5000
 
-    app.run(port=os.environ['PORT'])
+    app.run(port=port)
