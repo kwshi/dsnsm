@@ -30,6 +30,7 @@ class DataMan:
         return self.collection.find({})
 
     def write(self,
+              name,
               client_timestamp,
               ip,
               message,
@@ -37,6 +38,7 @@ class DataMan:
         server_timestamp = time.time()
 
         entry = {
+            'name': name,
             'client_timestamp': client_timestamp,
             'server_timestamp': server_timestamp,
             'message': message,
@@ -69,28 +71,22 @@ def home():
     return flask.Response(generate(), mimetype='text/plain')
 
 
-@app.route('/submit/<key>')
-def submit_get(key):
-    if key != config['dsnsm_key']:
+@app.route('/submit/<name>', methods=('GET', 'POST'))
+def submit(name):
+    if flask.request.args.get('key') != config['dsnsm_key']:
         return 'API key mismatch'
 
-    entry = data.write(client_timestamp=flask.request.args.get('time'),
+    if flask.request.method == 'POST':
+        form = flask.request.form
+
+    elif flask.request.method == 'GET':
+        form = flask.request.args
+
+    entry = data.write(name=name,
+                       client_timestamp=form.get('time'),
                        ip=flask.request.remote_addr,
-                       message=flask.request.form.get('message'),
-                       method='get')
-
-    return pp.pformat(entry)
-
-
-@app.route('/submit/<key>', methods=('POST',))
-def submit_post(key):
-    if key != config['dsnsm_key']:
-        return 'API key mismatch'
-
-    entry = data.write(client_timestamp=flask.request.form.get('time'),
-                       ip=flask.request.remote_addr,
-                       message=flask.request.form.get('message'),
-                       method='post')
+                       message=form.get('message'),
+                       method=flask.request.method)
 
     return pp.pformat(entry)
 
