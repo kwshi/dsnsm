@@ -9,9 +9,5 @@ def hello():
 
 
 if __name__ == '__main__':
-    try:
-        port = int(os.environ['PORT'])
-    except KeyError:
-        port = 5000
-
-    app.run(port=port)
+    app.run(host='0.0.0.0',
+            port=os.environ.get('PORT', 5000))
