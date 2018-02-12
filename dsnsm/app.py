@@ -74,9 +74,10 @@ def submit_get(key):
     if key != config['dsnsm_key']:
         return 'API key mismatch'
 
-    entry = data.write(flask.request.args.get('time'),
-                       flask.request.args.get('message'),
-                       'get')
+    entry = data.write(client_timestamp=flask.request.args.get('time'),
+                       ip=flask.request.remote_addr,
+                       message=flask.request.form.get('message'),
+                       method='get')
 
     return pp.pformat(entry)
 
