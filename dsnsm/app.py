@@ -3,7 +3,7 @@ import pprint as pp
 import json
 
 import config
-from dataentry import DataEntry
+from dataentry import DataEntry, DataError
 from dataman import DataMan
 
 app = flask.Flask('dsnsm')
@@ -59,7 +59,8 @@ def submit(name):
         entry = DataEntry.from_request(name, flask.request)
 
     except DataError as error:
-        return str(error), 400
+        return flask.Response(str(error),
+                              mimetype='text/plain'), 400
 
     data.write(entry)
 
