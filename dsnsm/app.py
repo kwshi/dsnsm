@@ -34,6 +34,16 @@ class DataMan:
         self.collection.insert_one(dict(entry))
 
 
+class DataError(Exception):
+    def __init__(self, key, message):
+        self.key = key
+        self.message = message
+
+    def __str__(self):
+        return 'DataError for key `{}`: {}'.format(self.key,
+                                                   self.message)
+
+
 class DataEntry:
     def __init__(self,
                  name,
@@ -55,6 +65,8 @@ class DataEntry:
         try:
             client_timestamp = int(values.get('time'))
         except ValueError:
+            raise DataError('client_timestamp',
+                            'Invalid timestamp (integer conversion failed)')
             client_timestamp = -1
 
         server_timestamp = int(time.time())
@@ -122,11 +134,15 @@ def submit(name):
         return flask.Response('API key mismatch',
                               mimetype='text/plain'), 403
 
-    entry = DataEntry.from_request(
-        name,
-        values,
-        flask.request.method,
-        flask.request.headers.get('X-Forwarded-For'))
+    try:
+        entry = DataEntry.from_request(
+            name,
+            values,
+            flask.request.method,
+            flask.request.headers.get('X-Forwarded-For'))
+
+    except DataError as error:
+        return str(error), 400
 
     data.write(entry)
 
