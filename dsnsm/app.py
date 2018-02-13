@@ -126,7 +126,7 @@ def fetch_json_min():
 def submit(name):
     values = flask.request.values
 
-    if flask.request.is_json():
+    if flask.request.is_json:
         values = flask.request.get_json()
 
     # check api key
