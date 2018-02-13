@@ -81,12 +81,12 @@ class DataEntry:
                    ip)
 
     def __iter__(self):
-        return (('name', self.name),
-                ('client_timestamp', self.client_timestamp),
-                ('server_timestamp', self.server_timestamp),
-                ('message', self.message),
-                ('method', self.method),
-                ('ip', self.ip))
+        yield from (('name', self.name),
+                    ('client_timestamp', self.client_timestamp),
+                    ('server_timestamp', self.server_timestamp),
+                    ('message', self.message),
+                    ('method', self.method),
+                    ('ip', self.ip))
 
 
 app = flask.Flask('dsnsm')
