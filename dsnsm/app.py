@@ -59,33 +59,24 @@ data = DataMan(config['mongo_url'],
 
 @app.route('/')
 def home():
-    def generate():
-        app.logger.info('home queried')
-        stuff = data.read_all()
-        yield 'listing all things\n\n'
-
-        for thing in stuff:
-            yield pp.pformat(thing)
-            yield '\n\n'
-
-    return flask.Response(generate(), mimetype='text/plain')
+    return flask.Response(pp.pformat(list(data.read_all())),
+                          mimetype='text/plain')
 
 
 @app.route('/submit/<name>', methods=('GET', 'POST'))
 def submit(name):
-    if flask.request.method == 'POST':
-        form = flask.request.form
+    values = flask.request.values
 
-    elif flask.request.method == 'GET':
-        form = flask.request.args
+    if flask.request.is_json():
+        values = flask.request.get_json()
 
-    if form.get('key') != config['dsnsm_key']:
+    if values.get('key') != config['dsnsm_key']:
         return 'API key mismatch'
 
     entry = data.write(name=name,
-                       client_timestamp=form.get('time'),
+                       client_timestamp=values.get('time'),
                        ip=flask.request.headers.get('X-Forwarded-For'),
-                       message=form.get('message'),
+                       message=values.get('message'),
                        method=flask.request.method)
 
     return pp.pformat(entry)
