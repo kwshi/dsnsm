@@ -28,7 +28,8 @@ class DataMan:
         self.collection = self.database[collection_name]
 
     def read_all(self):
-        return self.collection.find({})
+        for entry_dict in self.collection.find():
+            yield DataEntry(**entry_dict)
 
     def write(self, entry):
         self.collection.insert_one(dict(entry))
@@ -51,7 +52,8 @@ class DataEntry:
                  server_timestamp,
                  message,
                  method,
-                 ip):
+                 ip,
+                 _id=None):
         self.name = name
         self.client_timestamp = client_timestamp
         self.server_timestamp = server_timestamp
@@ -60,7 +62,11 @@ class DataEntry:
         self.ip = ip
 
     @classmethod
-    def from_request(cls, name, values, method, ip):
+    def from_request(cls, name, request):
+        values = request.values
+
+        if request.is_json:
+            values = request.get_json()
 
         try:
             client_timestamp = int(values.get('time'))
@@ -73,12 +79,13 @@ class DataEntry:
 
         message = values.get('message', '')
 
-        return cls(name,
-                   client_timestamp,
-                   server_timestamp,
-                   message,
-                   method,
-                   ip)
+        return cls(name=name,
+                   client_timestamp=client_timestamp,
+                   server_timestamp=server_timestamp,
+                   message=message,
+                   method=request.method,
+                   ip=request.headers.get('X-Forwarded-For',
+                                          request.remote_addr))
 
     def __iter__(self):
         yield from (('name', self.name),
@@ -97,19 +104,22 @@ data = DataMan(config['mongo_url'],
 
 @app.route('/fetch/raw')
 def fetch_raw():
-    return flask.Response(pp.pformat(tuple(data.read_all())),
+    return flask.Response(pp.pformat(tuple(map(dict,
+                                               data.read_all()))),
                           mimetype='text/plain')
 
 
 @app.route('/fetch/raw/min')
 def fetch_raw_min():
-    return flask.Response(str(tuple(data.read_all())),
+    return flask.Response(str(tuple(map(dict,
+                                        data.read_all()))),
                           mimetype='text/plain')
 
 
 @app.route('/fetch/json')
 def fetch_json():
-    return flask.Response(json.dumps(tuple(data.read_all()),
+    return flask.Response(json.dumps(tuple(map(dict,
+                                               data.read_all())),
                                      indent=2,
                                      sort_keys=True),
                           mimetype='application/json')
@@ -117,7 +127,8 @@ def fetch_json():
 
 @app.route('/fetch/json/min')
 def fetch_json_min():
-    return flask.Response(json.dumps(tuple(data.read_all()),
+    return flask.Response(json.dumps(tuple(map(dict,
+                                               data.read_all())),
                                      separators=(',', ':')),
                           mimetype='application/json')
 
@@ -135,18 +146,14 @@ def submit(name):
                               mimetype='text/plain'), 403
 
     try:
-        entry = DataEntry.from_request(
-            name,
-            values,
-            flask.request.method,
-            flask.request.headers.get('X-Forwarded-For'))
+        entry = DataEntry.from_request(name, flask.request)
 
     except DataError as error:
         return str(error), 400
 
     data.write(entry)
 
-    return flask.Response(pp.pformat(entry),
+    return flask.Response(pp.pformat(dict(entry)),
                           mimetype='text/plain'), 201
 
 
