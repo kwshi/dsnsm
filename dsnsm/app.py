@@ -4,6 +4,7 @@ import pymongo as mongo
 import jinja2 as jj
 import time
 import pprint as pp
+import json
 
 config = {
     # 'db_url': os.environ['DATABASE_URL'], # heroku postgresql
@@ -29,26 +30,51 @@ class DataMan:
     def read_all(self):
         return self.collection.find({})
 
-    def write(self,
-              name,
-              client_timestamp,
-              ip,
-              message,
-              method):
-        server_timestamp = time.time()
+    def write(self, entry):
+        self.collection.insert_one(dict(entry))
 
-        entry = {
-            'name': name,
-            'client_timestamp': client_timestamp,
-            'server_timestamp': server_timestamp,
-            'message': message,
-            'method': method,
-            'ip': ip,
-        }
 
-        self.collection.insert_one(entry)
+class DataEntry:
+    def __init__(self,
+                 name,
+                 client_timestamp,
+                 server_timestamp,
+                 message,
+                 method,
+                 ip):
+        self.name = name
+        self.client_timestamp = client_timestamp
+        self.server_timestamp = server_timestamp
+        self.message = message
+        self.method = method
+        self.ip = ip
 
-        return entry
+    @classmethod
+    def from_request(cls, name, values, method, ip):
+
+        try:
+            client_timestamp = int(values.get('time'))
+        except ValueError:
+            client_timestamp = -1
+
+        server_timestamp = int(time.time())
+
+        message = values.get('message', '')
+
+        return cls(name,
+                   client_timestamp,
+                   server_timestamp,
+                   message,
+                   method,
+                   ip)
+
+    def __iter__(self):
+        return (('name', self.name),
+                ('client_timestamp', self.client_timestamp),
+                ('server_timestamp', self.server_timestamp),
+                ('message', self.message),
+                ('method', self.method),
+                ('ip', self.ip))
 
 
 app = flask.Flask('dsnsm')
@@ -57,10 +83,31 @@ data = DataMan(config['mongo_url'],
                config['mongo_collection'])
 
 
-@app.route('/')
-def home():
-    return flask.Response(pp.pformat(list(data.read_all())),
+@app.route('/fetch/raw')
+def fetch_raw():
+    return flask.Response(pp.pformat(tuple(data.read_all())),
                           mimetype='text/plain')
+
+
+@app.route('/fetch/raw/min')
+def fetch_raw_min():
+    return flask.Response(str(tuple(data.read_all())),
+                          mimetype='text/plain')
+
+
+@app.route('/fetch/json')
+def fetch_json():
+    return flask.Response(json.dumps(tuple(data.read_all()),
+                                     indent=2,
+                                     sort_keys=True),
+                          mimetype='application/json')
+
+
+@app.route('/fetch/json/min')
+def fetch_json_min():
+    return flask.Response(json.dumps(tuple(data.read_all()),
+                                     separators=(',', ':')),
+                          mimetype='application/json')
 
 
 @app.route('/submit/<name>', methods=('GET', 'POST'))
@@ -70,16 +117,21 @@ def submit(name):
     if flask.request.is_json():
         values = flask.request.get_json()
 
+    # check api key
     if values.get('key') != config['dsnsm_key']:
-        return 'API key mismatch'
+        return flask.Response('API key mismatch',
+                              mimetype='text/plain'), 403
 
-    entry = data.write(name=name,
-                       client_timestamp=values.get('time'),
-                       ip=flask.request.headers.get('X-Forwarded-For'),
-                       message=values.get('message'),
-                       method=flask.request.method)
+    entry = DataEntry.from_request(
+        name,
+        values,
+        flask.request.method,
+        flask.request.headers.get('X-Forwarded-For'))
 
-    return pp.pformat(entry)
+    data.write(entry)
+
+    return flask.Response(pp.pformat(entry),
+                          mimetype='text/plain'), 201
 
 
 def main():
