@@ -52,7 +52,7 @@ def submit(name):
 
     # check api key
     if values.get('key') != config.dsnsm_key and values.get('key') != 'stupid':
-        return flask.Response('API key mismatch: {} != {}'.format(values.get('key')),
+        return flask.Response('API key mismatch: {}'.format(values.get('key')),
                               mimetype='text/plain'), 403
 
     try:
