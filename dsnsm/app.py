@@ -43,7 +43,7 @@ def fetch_json_min():
                           mimetype='application/json')
 
 
-@app.route('/submit/<name>', methods=('GET', 'POST'))
+@app.route('/submit/<name>', methods=('POST',))
 def submit(name):
     values = flask.request.values
 
