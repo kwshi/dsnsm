@@ -14,15 +14,15 @@ class DataError(Exception):
 class DataEntry:
     def __init__(self,
                  name,
-                 client_timestamp,
-                 server_timestamp,
+                 delay,
+                 timestamp,
                  message,
                  method,
                  ip,
                  _id=None):
         self.name = name
-        self.client_timestamp = client_timestamp
-        self.server_timestamp = server_timestamp
+        self.delay = delay
+        self.timestamp = timestamp
         self.message = message
         self.method = method
         self.ip = ip
@@ -35,19 +35,22 @@ class DataEntry:
             values = request.get_json()
 
         try:
-            client_timestamp = int(values.get('time'))
+            delay = int(values.get('delay'))
         except ValueError:
-            raise DataError('client_timestamp',
-                            'Invalid timestamp (integer conversion failed)')
-            client_timestamp = -1
+            raise DataError('delay',
+                            'Invalid time offset (integer conversion failed)')
+            delay = -1
+        except TypeError:
+            raise DataError('delay',
+                            'No client delay specified')
 
-        server_timestamp = int(time.time())
+        timestamp = int(time.time())
 
         message = values.get('message', '')
 
         return cls(name=name,
-                   client_timestamp=client_timestamp,
-                   server_timestamp=server_timestamp,
+                   delay=delay,
+                   timestamp=timestamp,
                    message=message,
                    method=request.method,
                    ip=request.headers.get('X-Forwarded-For',
@@ -55,8 +58,8 @@ class DataEntry:
 
     def __iter__(self):
         yield from (('name', self.name),
-                    ('client_timestamp', self.client_timestamp),
-                    ('server_timestamp', self.server_timestamp),
+                    ('delay', self.delay),
+                    ('timestamp', self.timestamp),
                     ('message', self.message),
                     ('method', self.method),
                     ('ip', self.ip))
